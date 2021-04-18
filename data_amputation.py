@@ -256,73 +256,111 @@ class MultivariateAmputation(TransformerMixin):
 
         return X_incomplete
 
-    def MNAR_masks(X, logistic_dist_type='MID', prop_of_missingness=0.5,
-                   missingness_patterns=None, pattern_freqs=None,
-                   pattern_weights=None):
-        '''
-        Args:
-            X: Data (shape: n_samples by n_dimensions)
 
-            logistic_dist_type: List of strings ('RIGHT', 'MID', 'TAIL' or 'LEFT' logistic distribution function)
-                - If a right-tailed (RIGHT) type of missingness is used, candidates
-                with high weighted sum scores will receive a high probability of being missing
-                - With a left-tailed (LEFT), centred (MID) or both-tailed (TAIL) missingness type,
-                higher probability values are given to the candidates with low, average
-                or extreme weighted sum scores respectively
+def MNAR_masks(X, logistic_dist_type='MID', prop_of_missingness=0.5,
+               missingness_patterns=None, pattern_freqs=None,
+               pattern_weights=None):
+    '''
+    Args:
+        X: Data (shape: n_samples by n_dimensions)
 
-            prop_of_missingness: A scalar specifying the proportion of missingness (should be a value between 0 and 1)
+        logistic_dist_type: List of strings ('RIGHT', 'MID', 'TAIL' or 'LEFT' logistic distribution function)
+            - If a right-tailed (RIGHT) type of missingness is used, candidates
+            with high weighted sum scores will receive a high probability of being missing
+            - With a left-tailed (LEFT), centred (MID) or both-tailed (TAIL) missingness type,
+            higher probability values are given to the candidates with low, average
+            or extreme weighted sum scores respectively
 
-            missingness_patterns: Candidate data patterns (shape: n_patterns by n_dimensions)
+        prop_of_missingness: A scalar specifying the proportion of missingness (should be a value between 0 and 1)
 
-            pattern_freqs: Frequency of each pattern (shape: n_patterns)
+        missingness_patterns: Candidate data patterns (shape: n_patterns by n_dimensions)
 
-            pattern_weights: Array of weights for each pattern (shape: n_patterns by n_dimensions)
+        pattern_freqs: Frequency of each pattern (shape: n_patterns)
+
+        pattern_weights: Array of weights for each pattern (shape: n_patterns by n_dimensions)
 
 
-        Original paper: https://www.tandfonline.com/doi/full/10.1080/00949655.2018.1491577
+    Original paper: https://www.tandfonline.com/doi/full/10.1080/00949655.2018.1491577
 
-        Returns:
-            missing_data_mask: Multiply with X to mask missing data
-            non_missing_data_mask: Multiply with X to mask non-missing data (i.e. to only show values to predict)
-        '''
-        n_dimensions = X.shape[1]
+    Returns:
+        missing_data_mask: Multiply with X to mask missing data
+        non_missing_data_mask: Multiply with X to mask non-missing data (i.e. to only show values to predict)
+    '''
+    n_samples = X.shape[0]
+    n_dimensions = X.shape[1]
 
-        if missingness_patterns is None:
-            n_patterns = n_dimensions
-            # one column is missing in each pattern
-            missingness_patterns = 1 - np.identity(n=n_dimensions)
+    if missingness_patterns is None:
+        n_patterns = n_dimensions
+        # one column is missing in each pattern
+        missingness_patterns = 1 - np.identity(n=n_dimensions)
 
-            # assign equal frequency to each pattern
-            pattern_freqs = np.array([1 / n_patterns] * n_patterns)
+        # assign equal frequency to each pattern
+        pattern_freqs = np.array([1 / n_patterns] * n_patterns)
 
-            # assign weights k by m matrix where k is the number of patterns and m is the number of dims
-            # use a standard multivariate normal distribution to sample random weights
-            pattern_weights = np.random.normal(0, 1, size=(n_patterns, n_dimensions))
+        # assign weights k by m matrix where k is the number of patterns and m is the number of dims
+        # use a standard multivariate normal distribution to sample random weights
+        pattern_weights = np.random.normal(0, 1, size=(n_patterns, n_dimensions))
 
-        # each dimension can have a different amputation distributions, let's keep them all the same for now
-        current_mechanisms = np.repeat('MNAR', n_dimensions)
-        logistic_dist_types = np.repeat(logistic_dist_type, n_dimensions)
+    # each dimension can have a different amputation distributions, let's keep them all the same for now
+    current_mechanisms = np.repeat('MNAR', n_dimensions)
+    logistic_dist_types = np.repeat(logistic_dist_type, n_dimensions)
 
-        # amputate
-        ma = MultivariateAmputation(
-            prop=prop_of_missingness,
-            patterns=missingness_patterns,
-            freqs=pattern_freqs,
-            weights=pattern_weights,
-            mechanisms=current_mechanisms,
-            types=logistic_dist_types,
-        )
+    # amputate
+    ma = MultivariateAmputation(
+        prop=prop_of_missingness,
+        patterns=missingness_patterns,
+        freqs=pattern_freqs,
+        weights=pattern_weights,
+        mechanisms=current_mechanisms,
+        types=logistic_dist_types,
+    )
 
-        incomplete_data = ma.fit_transform(X)
+    incomplete_data = ma.fit_transform(X)
 
-        # mask the missing data
-        missing_data_mask = incomplete_data.copy()
-        missing_data_mask[missing_data_mask == 0] = 1
+    # mask the missing data
+    missing_data_mask = incomplete_data.copy()
+    missing_data_mask[missing_data_mask == 0] = 1
 
-        # mask the nonmissing data
-        non_missing_data_mask = incomplete_data.copy()
-        non_missing_data_mask[np.isnan(non_missing_data_mask)] = 1
-        non_missing_data_mask[non_missing_data_mask == 0] = np.nan
+    # mask the nonmissing data
+    non_missing_data_mask = incomplete_data.copy()
+    non_missing_data_mask[np.isnan(non_missing_data_mask)] = 1
+    non_missing_data_mask[non_missing_data_mask == 0] = np.nan
 
-        return missing_data_mask, non_missing_data_mask
+    return missing_data_mask, non_missing_data_mask
 
+
+def MCAR_masks(X, prop_of_missingness=0.5):
+    '''
+    Args:
+        X: Data (shape: n_samples by n_dimensions)
+        prop_of_missingness: A scalar specifying the proportion of missingness (should be a value between 0 and 1)
+
+    Original paper: https://www.tandfonline.com/doi/full/10.1080/00949655.2018.1491577
+
+    Returns:
+        missing_data_mask: Multiply with X to mask missing data
+        non_missing_data_mask: Multiply with X to mask non-missing data (i.e. to only show values to predict)
+    '''
+    n_dimensions = X.shape[1]
+
+    # each dimension can have a different amputation distributions, let's keep them all the same for now
+    current_mechanisms = np.repeat('MCAR', n_dimensions)
+
+    # amputate
+    ma = MultivariateAmputation(
+        prop=prop_of_missingness,
+        mechanisms=current_mechanisms
+    )
+
+    incomplete_data = ma.fit_transform(X)
+
+    # mask the missing data
+    missing_data_mask = incomplete_data.copy()
+    missing_data_mask[missing_data_mask == 0] = 1
+
+    # mask the nonmissing data
+    non_missing_data_mask = incomplete_data.copy()
+    non_missing_data_mask[np.isnan(non_missing_data_mask)] = 1
+    non_missing_data_mask[non_missing_data_mask == 0] = np.nan
+
+    return missing_data_mask, non_missing_data_mask
