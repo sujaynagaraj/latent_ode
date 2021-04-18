@@ -257,6 +257,7 @@ class MultivariateAmputation(TransformerMixin):
         return X_incomplete
 
 
+# Missing Not at Random
 def MNAR_masks(X, logistic_dist_type='MID', prop_of_missingness=0.5,
                missingness_patterns=None, pattern_freqs=None,
                pattern_weights=None):
@@ -286,7 +287,6 @@ def MNAR_masks(X, logistic_dist_type='MID', prop_of_missingness=0.5,
         missing_data_mask: Multiply with X to mask missing data
         non_missing_data_mask: Multiply with X to mask non-missing data (i.e. to only show values to predict)
     '''
-    n_samples = X.shape[0]
     n_dimensions = X.shape[1]
 
     if missingness_patterns is None:
@@ -329,6 +329,7 @@ def MNAR_masks(X, logistic_dist_type='MID', prop_of_missingness=0.5,
     return missing_data_mask, non_missing_data_mask
 
 
+# Missing Completely at Random
 def MCAR_masks(X, prop_of_missingness=0.5):
     '''
     Args:
