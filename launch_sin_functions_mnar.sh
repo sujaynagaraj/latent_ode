@@ -24,7 +24,7 @@ for j in {0..8}
       for i in {0..2}
       do
         rand_seed=${seed_array[i]}
-        python3 run_models.py --niters 500 -n 1000 -s 50 -l 10 --dataset periodic  --latent-ode --noise-weight 0.01 --mcar --p-miss $pct --random-seed $rand_seed
+        python3 run_models.py --niters 500 -n 1000 -s 50 -l 10 --dataset periodic  --latent-ode --noise-weight 0.01 --mnar --p-miss $pct --random-seed $rand_seed  --p-obs 0.5
       done
 
       done
