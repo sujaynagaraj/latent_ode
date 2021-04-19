@@ -42,9 +42,6 @@ def data_ampute_split_and_subsample_batch_updated(data_dict, args, data_type = "
     if args.extrap:
         raise Exception("Have not implemented extrapolation mode for data ampute collate!")
 
-    all_keys = processed_dict.keys()
-    all_tensors_shapes = [(k, v.shape) for k, v in processed_dict.items() if type(v) == torch.Tensor]
-
     observed_data = processed_dict["observed_data"]
     n_traj, n_timepoints, n_dims = observed_data.shape
 
@@ -53,10 +50,9 @@ def data_ampute_split_and_subsample_batch_updated(data_dict, args, data_type = "
     flattened_data = flattened_data.cpu().numpy()
 
     if args.mcar:
-        missing_mask = produce_NA(flattened_data, args.prop_of_missingness, mecha="MCAR")["mask"]
+        missing_mask = 1 - produce_NA(flattened_data, args.p_miss, mecha="MCAR")["mask"]
     elif args.mnar:
-
-        missing_mask = produce_NA(flattened_data, p_miss=args.prop_of_missingness, mecha="MNAR", opt="logistic", p_obs=0.5)["mask"]
+        missing_mask = 1 - produce_NA(flattened_data, p_miss=args.p_miss, mecha="MNAR", opt="logistic", p_obs=args.p_obs)["mask"]
 
     missing_mask = missing_mask.reshape(n_traj, n_timepoints, n_dims)
     

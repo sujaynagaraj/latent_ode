@@ -85,7 +85,7 @@ parser.add_argument('--classif', action='store_true', help="Include binary class
 
 parser.add_argument('--linear-classif', action='store_true', help="If using a classifier, use a linear classifier instead of 1-layer NN")
 parser.add_argument('--extrap', action='store_true', help="Set extrapolation mode. If this flag is not set, run interpolation mode.")
-
+	
 
 
 parser.add_argument('-t', '--timepoints', type=int, default=100, help="Total number of time-points")
@@ -95,7 +95,8 @@ parser.add_argument('--noise-weight', type=float, default=0.01, help="Noise ampl
 
 parser.add_argument('--mcar',action='store_true', help="Use MCAR data amputation")
 parser.add_argument('--mnar',action='store_true', help="Use MNAR data amputation")
-parser.add_argument('--prop-of-missingness', type=float, default=0, help="controls how much missingness is in the data")
+parser.add_argument('--p-miss', type=float, default=0, help="controls how much missingness is in the data")
+parser.add_argument('--p-obs', type=float, default=0, help="controls how much missingness is in the data")
 
 
 args = parser.parse_args()
@@ -249,7 +250,13 @@ if __name__ == '__main__':
 	##################################################################
 	# Training
 
-	log_path = "logs/" + file_name + "_" + str(experimentID) + ".log"
+	fancy_string = f"{args.dataset}_p_miss_{args.p_miss}_random_seed_{args.random_seed}"
+	if args.mcar:
+		fancy_string += "mcar"
+	elif args.mnar:
+		fancy_string += "mnar" + f"_p_obs_{args.p_obs}"
+		
+	log_path = "logs/" + file_name + "_" + str(experimentID) + "_" + fancy_string + ".log"
 	if not os.path.exists("logs/"):
 		utils.makedirs("logs/")
 	logger = utils.get_logger(logpath=log_path, filepath=os.path.abspath(__file__))
