@@ -36,6 +36,8 @@ from mujoco_physics import HopperPhysics
 
 from lib.utils import compute_loss_all_batches
 
+from plotting_helpers import make_quick_plot
+
 # Generative model for noisy data based on ODE
 parser = argparse.ArgumentParser('Latent ODE')
 parser.add_argument('-n',  type=int, default=100, help="Size of the dataset")
@@ -84,9 +86,16 @@ parser.add_argument('--classif', action='store_true', help="Include binary class
 parser.add_argument('--linear-classif', action='store_true', help="If using a classifier, use a linear classifier instead of 1-layer NN")
 parser.add_argument('--extrap', action='store_true', help="Set extrapolation mode. If this flag is not set, run interpolation mode.")
 
+
+
 parser.add_argument('-t', '--timepoints', type=int, default=100, help="Total number of time-points")
 parser.add_argument('--max-t',  type=float, default=5., help="We subsample points in the interval [0, args.max_tp]")
 parser.add_argument('--noise-weight', type=float, default=0.01, help="Noise amplitude for generated traejctories")
+
+
+parser.add_argument('--mcar',action='store_true', help="Use MCAR data amputation")
+parser.add_argument('--mnar',action='store_true', help="Use MNAR data amputation")
+parser.add_argument('--prop-of-missingness', type=float, default=0, help="controls how much missingness is in the data")
 
 
 args = parser.parse_args()
@@ -250,6 +259,8 @@ if __name__ == '__main__':
 
 	num_batches = data_obj["n_train_batches"]
 
+
+
 	for itr in range(1, num_batches * (args.niters + 1)):
 		optimizer.zero_grad()
 		utils.update_learning_rate(optimizer, decay_rate = 0.999, lowest = args.lr / 10)
@@ -261,6 +272,9 @@ if __name__ == '__main__':
 			kl_coef = (1-0.99** (itr // num_batches - wait_until_kl_inc))
 
 		batch_dict = utils.get_next_batch(data_obj["train_dataloader"])
+		# make_quick_plot(batch_dict, 0, "mcar_dropping_again")
+		# 5/0.0
+
 		train_res = model.compute_all_losses(batch_dict, n_traj_samples = 3, kl_coef = kl_coef)
 		train_res["loss"].backward()
 		optimizer.step()

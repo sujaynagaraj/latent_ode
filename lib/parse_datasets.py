@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader
 from mujoco_physics import HopperPhysics
 from physionet import PhysioNet, variable_time_collate_fn, get_data_min_max
 from person_activity import PersonActivity, variable_time_collate_fn_activity
-
+from data_amputation import data_ampute_batch_collate
 from sklearn import model_selection
 import random
 
@@ -27,6 +27,7 @@ def parse_datasets(args, device):
 	
 
 	def basic_collate_fn(batch, time_steps, args = args, device = device, data_type = "train"):
+		
 		batch = torch.stack(batch)
 		data_dict = {
 			"data": batch, 
@@ -35,6 +36,7 @@ def parse_datasets(args, device):
 		data_dict = utils.split_and_subsample_batch(data_dict, args, data_type = data_type)
 		return data_dict
 
+	# def custom_collate_fn(batch, time_steps, args=args, device = device,  data)
 
 	dataset_name = args.dataset
 
@@ -188,6 +190,64 @@ def parse_datasets(args, device):
 
 		return data_objects
 
+	if dataset_name == "markov_chain":
+		def generate_data(num_samples, length):
+			from hmmlearn import hmm
+
+			model = hmm.GaussianHMM(n_components=3, covariance_type="full")
+			model.startprob_ = np.array([0.6, 0.3, 0.1])
+			model.transmat_ = np.array([[0.7, 0.2, 0.1],
+								[0.3, 0.5, 0.2],
+								[0.3, 0.3, 0.4]])
+
+			model.means_ = np.array([[0.0, 0.0], [3.0, -3.0], [5.0, -5.0]])
+			model.covars_ = np.tile(np.identity(2), (3, 1,1))
+
+			dataset=[]
+
+			for i in range(num_samples):
+				X, Z = model.sample(length)
+				X = np.reshape(X[:,0],(length,1))
+				dataset.append(torch.tensor(X))
+			return torch.stack(dataset)
+
+		dataset = generate_data(args.n, n_total_tp).float()
+		time_steps_extrap = torch.arange(n_total_tp).float()
+
+		dataset = dataset.to(device)
+		time_steps_extrap = time_steps_extrap.to(device)
+
+		train_y, test_y = utils.split_train_test(dataset, train_fraq = 0.8)
+
+		n_samples = len(dataset)
+		input_dim = dataset.size(-1)
+
+		if args.mcar or args.mnar:
+			collate_fn_train =  lambda batch: data_ampute_batch_collate(batch, time_steps_extrap, args, device, data_type = "train")
+			collate_fn_test = lambda batch: data_ampute_batch_collate(batch, time_steps_extrap, args, device, data_type = "test")
+		else:
+			collate_fn_train = lambda batch: basic_collate_fn(batch, time_steps_extrap, data_type = "train")
+			collate_fn_test = lambda batch: basic_collate_fn(batch, time_steps_extrap, data_type = "test")
+
+
+		batch_size = min(args.batch_size, args.n)
+		train_dataloader = DataLoader(train_y, batch_size = batch_size, shuffle=False,
+			collate_fn=collate_fn_train)
+		test_dataloader = DataLoader(test_y, batch_size = args.n, shuffle=False,
+			collate_fn=collate_fn_test)
+		
+		data_objects = {#"dataset_obj": dataset_obj, 
+					"train_dataloader": utils.inf_generator(train_dataloader), 
+					"test_dataloader": utils.inf_generator(test_dataloader),
+					"input_dim": input_dim,
+					"n_train_batches": len(train_dataloader),
+					"n_test_batches": len(test_dataloader)}
+
+		return data_objects
+		
+
+
+
 	########### 1d datasets ###########
 
 	# Sampling args.timepoints time points in the interval [0, args.max_t]
@@ -210,9 +270,21 @@ def parse_datasets(args, device):
 
 	if dataset_obj is None:
 		raise Exception("Unknown dataset: {}".format(dataset_name))
+	
+	# def make_quick_plot(data,time_steps_extrap, index):
+	# 	import matplotlib.pyplot as plt
+
+	# 	plt.figure()
+	# 	plt.scatter(time_steps_extrap, data[index, :, 0])
+	# 	plt.title(f"Dataset at index {index}")
+	# 	plt.savefig(f"dataset_at_index_{index}.png")
+		
 
 	dataset = dataset_obj.sample_traj(time_steps_extrap, n_samples = args.n, 
 		noise_weight = args.noise_weight)
+
+	# for i in range(3):
+	# 	make_quick_plot(dataset, time_steps_extrap, i)
 
 	# Process small datasets
 	dataset = dataset.to(device)
@@ -223,11 +295,19 @@ def parse_datasets(args, device):
 	n_samples = len(dataset)
 	input_dim = dataset.size(-1)
 
+
+	if args.mcar or args.mnar:
+		collate_fn_train =  lambda batch: data_ampute_batch_collate(batch, time_steps_extrap, args, device, data_type = "train")
+		collate_fn_test = lambda batch: data_ampute_batch_collate(batch, time_steps_extrap, args, device, data_type = "test")
+	else:
+		collate_fn_train = lambda batch: basic_collate_fn(batch, time_steps_extrap, data_type = "train")
+		collate_fn_test = lambda batch: basic_collate_fn(batch, time_steps_extrap, data_type = "test")
+
 	batch_size = min(args.batch_size, args.n)
 	train_dataloader = DataLoader(train_y, batch_size = batch_size, shuffle=False,
-		collate_fn= lambda batch: basic_collate_fn(batch, time_steps_extrap, data_type = "train"))
+		collate_fn=collate_fn_train)
 	test_dataloader = DataLoader(test_y, batch_size = args.n, shuffle=False,
-		collate_fn= lambda batch: basic_collate_fn(batch, time_steps_extrap, data_type = "test"))
+		collate_fn=collate_fn_test)
 	
 	data_objects = {#"dataset_obj": dataset_obj, 
 				"train_dataloader": utils.inf_generator(train_dataloader), 
