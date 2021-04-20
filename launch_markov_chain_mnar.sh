@@ -5,8 +5,8 @@
 #SBATCH -a 0-8%4
 #SBATCH --qos normal 
 #SBATCH -p p100
-#SBATCH -o slurm-%A_%a-baseline.out
-#SBATCH --error slurm-%A_%a-baseline.out
+#SBATCH -o slurm-%A_%a-_hmm_mnar.out
+#SBATCH --error slurm-%A_%a_hmm_mnar.out
 #SBATCH --open-mode=append
 # Make this a dataset x Sampling hparam + run evaluation script for random samples.
 
@@ -24,9 +24,7 @@ for j in {0..8}
       for i in {0..2}
       do
         rand_seed=${seed_array[i]}
-        python3 run_models.py --niters 500 -n 1000 -s 50 -l 10 --dataset markov_chain  --latent-ode --noise-weight 0.01 --mnar --p-miss $pct --random-seed $rand_seed  --p-obs 0.5
-      done
-
+        python3 -u run_models.py --niters 500 -n 1000 -s 50 -l 10 --dataset markov_chain  --latent-ode --noise-weight 0.01 --mnar --p-miss $pct --random-seed $rand_seed  --p-obs 0.5
       done
     fi
   done
