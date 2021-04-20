@@ -84,11 +84,18 @@ def parse_datasets(args, device):
 		n_samples = len(dataset)
 		input_dim = dataset.size(-1)
 
+		if args.mcar or args.mnar:
+			collate_fn_train =  lambda batch: data_ampute_batch_collate(batch, time_steps, args, device, data_type = "train")
+			collate_fn_test = lambda batch: data_ampute_batch_collate(batch, time_steps, args, device, data_type = "test")
+		else:
+			collate_fn_train = lambda batch: basic_collate_fn(batch, time_steps, data_type = "train")
+			collate_fn_test = lambda batch: basic_collate_fn(batch, time_steps, data_type = "test")
+
 		batch_size = min(args.batch_size, args.n)
 		train_dataloader = DataLoader(train_y, batch_size = batch_size, shuffle=False,
-			collate_fn= lambda batch: basic_collate_fn(batch, time_steps, data_type = "train"))
+			collate_fn=collate_fn_train)
 		test_dataloader = DataLoader(test_y, batch_size = n_samples, shuffle=False,
-			collate_fn= lambda batch: basic_collate_fn(batch, time_steps, data_type = "test"))
+			collate_fn= collate_fn_test)
 		
 		data_objects = {"dataset_obj": dataset_obj, 
 					"train_dataloader": utils.inf_generator(train_dataloader), 
