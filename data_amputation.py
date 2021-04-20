@@ -58,7 +58,22 @@ def data_ampute_split_and_subsample_batch_updated(data_dict, args, data_type = "
     
     device = processed_dict["observed_data"].device
 
+    missing_tp = torch.sum(missing_mask,(0,2)) == 0.
+
+    num_of_missing_tp = torch.sum(missing_tp)
+    random_trajs = torch.randint(0, n_traj, (num_of_missing_tp, ))
+
+    # set to first by default
+    random_dims_to_select = torch.zeros(num_of_missing_tp, dtype=int)
+    if n_dims > 1:
+        random_dims_to_select = torch.randint(0, n_dims, (num_of_missing_tp, ))
+
+    missing_tp_indices = np.argwhere(missing_tp)
+    for i in range(num_of_missing_tp):
+        missing_mask[random_trajs[i].long(),missing_tp_indices[i].long(),random_dims_to_select[i].long()] = 1
+
     processed_dict["observed_mask"] = torch.tensor(missing_mask).float().to(device)
+
     # apply missing mask
     processed_dict["observed_data"] *= processed_dict["observed_mask"]
     processed_dict["observed_data"] = processed_dict["observed_data"].float()
