@@ -68,7 +68,7 @@ def data_ampute_split_and_subsample_batch_updated(data_dict, args, data_type = "
     if n_dims > 1:
         random_dims_to_select = torch.randint(0, n_dims, (num_of_missing_tp, ))
 
-    missing_tp_indices = np.argwhere(missing_tp)
+    missing_tp_indices = np.argwhere(missing_tp)[0]
     for i in range(num_of_missing_tp):
         missing_mask[random_trajs[i].long(),missing_tp_indices[i].long(),random_dims_to_select[i].long()] = 1
 
