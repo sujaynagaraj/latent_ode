@@ -256,9 +256,25 @@ if __name__ == '__main__':
 	elif args.mnar:
 		fancy_string += "mnar" + f"_p_obs_{args.p_obs}"
 		
-	log_path = "logs/" + file_name + "_" + str(experimentID) + "_" + fancy_string + ".log"
-	if not os.path.exists("logs/"):
-		utils.makedirs("logs/")
+	model_folder = ""
+	if args.latent_ode:
+		model_folder = f"latent_ode_{args.z0_encoder}"
+	elif args.classic_rnn:
+		model_folder = f"classic_rnn_{args.rnn_cell}"
+		if args.input_decay:
+			model_folder += "_input_decay"
+	elif args.ode_rnn:
+		model_folder = "ode_rnn"
+	elif args.rnn_vae:
+		model_folder = "rnn_vae"
+		
+	log_dir = os.path.join("logs", model_folder)
+	log_file = f"{file_name}_{str(experimentID)}_{fancy_string}.log"
+	log_path = os.path.join(log_dir, log_file) 
+
+	if not os.path.exists(log_dir):
+		utils.makedirs(log_dir)
+
 	logger = utils.get_logger(logpath=log_path, filepath=os.path.abspath(__file__))
 	logger.info(input_command)
 
